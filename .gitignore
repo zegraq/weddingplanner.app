@@ -25,3 +25,72 @@ replay_pid*
 
 # Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
 .kotlin/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.fleet/
+
+# Gradle / Kotlin
+.gradle/
+build/
+**/build/
+local.properties
+captures/
+.cxx/
+kotlin-js-store/
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+bin/
+gen/
+release/
+keystore.properties
+*.jks
+*.keystore
+
+# Kotlin/Native
+.konan/
+
+# Xcode / iOS (när iosApp/ finns)
+xcuserdata/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+Pods/
+Podfile.lock
+*.hmap
+
+# .NET / backend
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+appsettings.Development.json
+appsettings.Local.json
+*.pdb
+
+# Secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# OS / misc
+Thumbs.db
+desktop.ini
