@@ -10,6 +10,10 @@ import app.weddingplanner.domain.Household
 import app.weddingplanner.domain.HouseholdInput
 import app.weddingplanner.domain.RsvpStatus
 import app.weddingplanner.domain.RsvpToken
+import app.weddingplanner.domain.TodoAssignee
+import app.weddingplanner.domain.TodoInput
+import app.weddingplanner.domain.TodoItem
+import app.weddingplanner.domain.TodoStatus
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.random.Random
@@ -22,6 +26,7 @@ class MockApiClient(
     private val mutex = Mutex()
     private val households = mutableListOf<Household>()
     private val categories = mutableListOf<BudgetCategory>()
+    private val todos = mutableListOf<TodoItem>()
     private var totalBudget: Long? = null
     private var wedding: Wedding = Wedding(date = "2027-06-05", venue = null, totalBudget = null)
     private var idCounter = 0L
@@ -29,6 +34,7 @@ class MockApiClient(
     init {
         seed()
         seedBudget()
+        seedTodos()
     }
 
     override suspend fun getWedding(): Wedding = mutex.withLock { wedding }
@@ -269,6 +275,68 @@ class MockApiClient(
         }
     }
 
+    override suspend fun listTodos(): Result<List<TodoItem>> = runCatching {
+        mutex.withLock { todos.toList() }
+    }
+
+    override suspend fun createTodo(input: TodoInput): Result<TodoItem> = runCatching {
+        mutex.withLock {
+            validateTodoInput(input)
+            val item = TodoItem(
+                id = nextId("td"),
+                title = input.title.trim(),
+                dueDate = input.dueDate?.trim()?.ifBlank { null },
+                status = TodoStatus.Open,
+                assignee = input.assignee,
+                notes = input.notes?.trim()?.ifBlank { null },
+                createdAt = clock.nowIso(),
+            )
+            todos += item
+            item
+        }
+    }
+
+    override suspend fun updateTodo(id: String, input: TodoInput): Result<TodoItem> = runCatching {
+        mutex.withLock {
+            validateTodoInput(input)
+            val index = todos.indexOfFirst { it.id == id }
+            require(index >= 0) { "Uppgift $id finns inte" }
+            val updated = todos[index].copy(
+                title = input.title.trim(),
+                dueDate = input.dueDate?.trim()?.ifBlank { null },
+                assignee = input.assignee,
+                notes = input.notes?.trim()?.ifBlank { null },
+            )
+            todos[index] = updated
+            updated
+        }
+    }
+
+    override suspend fun setTodoStatus(id: String, status: TodoStatus): Result<TodoItem> = runCatching {
+        mutex.withLock {
+            val index = todos.indexOfFirst { it.id == id }
+            require(index >= 0) { "Uppgift $id finns inte" }
+            val updated = todos[index].copy(status = status)
+            todos[index] = updated
+            updated
+        }
+    }
+
+    override suspend fun deleteTodo(id: String): Result<Unit> = runCatching {
+        mutex.withLock {
+            val removed = todos.removeAll { it.id == id }
+            require(removed) { "Uppgift $id finns inte" }
+        }
+    }
+
+    private fun validateTodoInput(input: TodoInput) {
+        require(input.title.isNotBlank()) { "Titel krävs" }
+        val date = input.dueDate?.trim()
+        if (!date.isNullOrEmpty()) {
+            require(DATE_REGEX.matches(date)) { "Datum ska vara yyyy-MM-dd" }
+        }
+    }
+
     private fun mutateItem(itemId: String, transform: (BudgetItem) -> BudgetItem) {
         categories.forEachIndexed { index, category ->
             val itemIndex = category.items.indexOfFirst { it.id == itemId }
@@ -338,6 +406,55 @@ class MockApiClient(
         )
     }
 
+    private fun seedTodos() {
+        val now = clock.nowIso()
+        todos += TodoItem(
+            id = nextId("td"),
+            title = "Boka catering",
+            dueDate = "2026-04-30",
+            status = TodoStatus.Open,
+            assignee = TodoAssignee.Me,
+            notes = "Sara & Sons har skickat offert",
+            createdAt = now,
+        )
+        todos += TodoItem(
+            id = nextId("td"),
+            title = "Skicka spara-datum-kort",
+            dueDate = "2026-06-15",
+            status = TodoStatus.Open,
+            assignee = TodoAssignee.Both,
+            notes = null,
+            createdAt = now,
+        )
+        todos += TodoItem(
+            id = nextId("td"),
+            title = "Provsmakning tårta",
+            dueDate = "2026-09-01",
+            status = TodoStatus.Open,
+            assignee = TodoAssignee.Partner,
+            notes = null,
+            createdAt = now,
+        )
+        todos += TodoItem(
+            id = nextId("td"),
+            title = "Bestäm gästlistans omfattning",
+            dueDate = null,
+            status = TodoStatus.Open,
+            assignee = TodoAssignee.Both,
+            notes = "Diskussion pågår",
+            createdAt = now,
+        )
+        todos += TodoItem(
+            id = nextId("td"),
+            title = "Boka lokal",
+            dueDate = "2026-03-01",
+            status = TodoStatus.Done,
+            assignee = TodoAssignee.Both,
+            notes = "Klart — herrgården bokad",
+            createdAt = now,
+        )
+    }
+
     private fun seedBudget() {
         totalBudget = 350_000L
         wedding = wedding.copy(totalBudget = 350_000L)
@@ -385,5 +502,9 @@ class MockApiClient(
                 ),
             ),
         )
+    }
+
+    companion object {
+        private val DATE_REGEX = Regex("""^\d{4}-\d{2}-\d{2}$""")
     }
 }

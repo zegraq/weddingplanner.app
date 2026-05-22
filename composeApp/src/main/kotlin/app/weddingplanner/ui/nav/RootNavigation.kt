@@ -42,6 +42,10 @@ import app.weddingplanner.ui.guests.HouseholdEditScreen
 import app.weddingplanner.ui.guests.HouseholdEditViewModel
 import app.weddingplanner.ui.home.HomeScreen
 import app.weddingplanner.ui.home.HomeViewModel
+import app.weddingplanner.ui.todo.TodoEditScreen
+import app.weddingplanner.ui.todo.TodoEditViewModel
+import app.weddingplanner.ui.todo.TodoListScreen
+import app.weddingplanner.ui.todo.TodoListViewModel
 
 private object Routes {
     const val HOME = "home"
@@ -51,9 +55,12 @@ private object Routes {
     const val GUEST_EDIT = "guests/{id}/edit"
     const val BUDGET = "budget"
     const val TODO = "todo"
+    const val TODO_NEW = "todo/new"
+    const val TODO_EDIT = "todo/{id}/edit"
 
     fun guestDetail(id: String) = "guests/$id"
     fun guestEdit(id: String) = "guests/$id/edit"
+    fun todoEdit(id: String) = "todo/$id/edit"
 }
 
 private data class TopTab(val route: String, val label: String, val icon: ImageVector)
@@ -131,7 +138,33 @@ fun RootNavigation(apiClient: ApiClient) {
                 })
                 BudgetScreen(viewModel = vm)
             }
-            composable(Routes.TODO) { PlaceholderScreen("Att-göra") }
+            composable(Routes.TODO) {
+                val vm: TodoListViewModel = viewModel(factory = factory(apiClient) {
+                    TodoListViewModel(apiClient)
+                })
+                TodoListScreen(
+                    viewModel = vm,
+                    onNewTodo = { nav.navigate(Routes.TODO_NEW) },
+                    onEditTodo = { id -> nav.navigate(Routes.todoEdit(id)) },
+                )
+            }
+            composable(Routes.TODO_NEW) {
+                val vm: TodoEditViewModel = viewModel(factory = factory(apiClient) {
+                    TodoEditViewModel(apiClient, todoId = null)
+                })
+                TodoEditScreen(viewModel = vm, isNew = true, onBack = { nav.popBackStack() })
+            }
+            composable(Routes.TODO_EDIT) { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("id")
+                    ?: return@composable
+                val vm: TodoEditViewModel = viewModel(
+                    key = "todo-edit-$id",
+                    factory = factory(apiClient) {
+                        TodoEditViewModel(apiClient, todoId = id)
+                    },
+                )
+                TodoEditScreen(viewModel = vm, isNew = false, onBack = { nav.popBackStack() })
+            }
         }
     }
 }
