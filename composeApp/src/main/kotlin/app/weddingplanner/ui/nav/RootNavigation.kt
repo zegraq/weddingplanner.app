@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -42,6 +43,10 @@ import app.weddingplanner.ui.guests.HouseholdEditScreen
 import app.weddingplanner.ui.guests.HouseholdEditViewModel
 import app.weddingplanner.ui.home.HomeScreen
 import app.weddingplanner.ui.home.HomeViewModel
+import app.weddingplanner.ui.shopping.ShoppingEditScreen
+import app.weddingplanner.ui.shopping.ShoppingEditViewModel
+import app.weddingplanner.ui.shopping.ShoppingListScreen
+import app.weddingplanner.ui.shopping.ShoppingListViewModel
 import app.weddingplanner.ui.todo.TodoEditScreen
 import app.weddingplanner.ui.todo.TodoEditViewModel
 import app.weddingplanner.ui.todo.TodoListScreen
@@ -57,10 +62,14 @@ private object Routes {
     const val TODO = "todo"
     const val TODO_NEW = "todo/new"
     const val TODO_EDIT = "todo/{id}/edit"
+    const val SHOPPING = "shopping"
+    const val SHOPPING_NEW = "shopping/new"
+    const val SHOPPING_EDIT = "shopping/{id}/edit"
 
     fun guestDetail(id: String) = "guests/$id"
     fun guestEdit(id: String) = "guests/$id/edit"
     fun todoEdit(id: String) = "todo/$id/edit"
+    fun shoppingEdit(id: String) = "shopping/$id/edit"
 }
 
 private data class TopTab(val route: String, val label: String, val icon: ImageVector)
@@ -70,6 +79,7 @@ private val tabs = listOf(
     TopTab(Routes.GUESTS, "Gäster", Icons.Default.People),
     TopTab(Routes.BUDGET, "Budget", Icons.Default.Savings),
     TopTab(Routes.TODO, "Att-göra", Icons.Default.CheckBox),
+    TopTab(Routes.SHOPPING, "Inköp", Icons.Default.ShoppingCart),
 )
 
 @Composable
@@ -164,6 +174,33 @@ fun RootNavigation(apiClient: ApiClient) {
                     },
                 )
                 TodoEditScreen(viewModel = vm, isNew = false, onBack = { nav.popBackStack() })
+            }
+            composable(Routes.SHOPPING) {
+                val vm: ShoppingListViewModel = viewModel(factory = factory(apiClient) {
+                    ShoppingListViewModel(apiClient)
+                })
+                ShoppingListScreen(
+                    viewModel = vm,
+                    onNewItem = { nav.navigate(Routes.SHOPPING_NEW) },
+                    onEditItem = { id -> nav.navigate(Routes.shoppingEdit(id)) },
+                )
+            }
+            composable(Routes.SHOPPING_NEW) {
+                val vm: ShoppingEditViewModel = viewModel(factory = factory(apiClient) {
+                    ShoppingEditViewModel(apiClient, itemId = null)
+                })
+                ShoppingEditScreen(viewModel = vm, isNew = true, onBack = { nav.popBackStack() })
+            }
+            composable(Routes.SHOPPING_EDIT) { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("id")
+                    ?: return@composable
+                val vm: ShoppingEditViewModel = viewModel(
+                    key = "shopping-edit-$id",
+                    factory = factory(apiClient) {
+                        ShoppingEditViewModel(apiClient, itemId = id)
+                    },
+                )
+                ShoppingEditScreen(viewModel = vm, isNew = false, onBack = { nav.popBackStack() })
             }
         }
     }
