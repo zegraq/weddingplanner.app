@@ -13,6 +13,10 @@ Singleton i praktiken. En instans per drift.
 - `total_budget` — totalbudget-tak i SEK (heltal hela kronor), null
   tills satt. Får överskridas av summan av kategoribudgets — vi
   varnar bara, vi blockerar inte
+- `my_name` — namnet på "jag" i appen. Visas i tilldelningsval
+  (att-göra). Default `Daniel` tills annat sägs
+- `partner_name` — namnet på partnern. Visas i tilldelningsval.
+  Default `Sara` tills annat sägs
 - `notes` — fritext
 
 ## Household
@@ -109,7 +113,8 @@ Ingen multi-currency, ingen växelkurs.
 - `due_date` — datum, kan vara null
 - `status` — `open` | `done`
 - `assigned_to` — `me` | `partner` | `both`. Enum, för det är bara
-  två personer
+  två personer. UI mappar `me` till `my_name`, `partner` till
+  `partner_name`, och `both` till "Båda"
 - `notes` — fritext
 
 Inga subtasks, ingen prioritet, inga taggar. Om vi behöver det får vi

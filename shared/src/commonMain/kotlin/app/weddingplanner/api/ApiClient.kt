@@ -4,6 +4,9 @@ import app.weddingplanner.domain.BudgetView
 import app.weddingplanner.domain.Household
 import app.weddingplanner.domain.HouseholdInput
 import app.weddingplanner.domain.RsvpStatus
+import app.weddingplanner.domain.TodoInput
+import app.weddingplanner.domain.TodoItem
+import app.weddingplanner.domain.TodoStatus
 
 interface ApiClient {
     suspend fun getWedding(): Wedding
@@ -50,4 +53,10 @@ interface ApiClient {
     ): Result<BudgetView>
     suspend fun markItemUnpaid(itemId: String): Result<BudgetView>
     suspend fun deleteItem(itemId: String): Result<BudgetView>
+
+    suspend fun listTodos(): Result<List<TodoItem>>
+    suspend fun createTodo(input: TodoInput): Result<TodoItem>
+    suspend fun updateTodo(id: String, input: TodoInput): Result<TodoItem>
+    suspend fun setTodoStatus(id: String, status: TodoStatus): Result<TodoItem>
+    suspend fun deleteTodo(id: String): Result<Unit>
 }

@@ -7,4 +7,6 @@ data class Wedding(
     val date: String,
     val venue: String?,
     val totalBudget: Long? = null,
+    val myName: String = "Daniel",
+    val partnerName: String = "Sara",
 )
