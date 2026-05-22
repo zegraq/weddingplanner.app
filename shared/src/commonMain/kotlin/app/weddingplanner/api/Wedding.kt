@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class Wedding(
     val date: String,
     val venue: String?,
+    val totalBudget: Long? = null,
 )

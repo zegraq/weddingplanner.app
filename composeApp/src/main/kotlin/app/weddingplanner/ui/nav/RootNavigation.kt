@@ -29,6 +29,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.weddingplanner.api.ApiClient
+import app.weddingplanner.ui.budget.BudgetScreen
+import app.weddingplanner.ui.budget.BudgetViewModel
 import app.weddingplanner.ui.guests.GuestListScreen
 import app.weddingplanner.ui.guests.GuestListViewModel
 import app.weddingplanner.ui.guests.HouseholdDetailScreen
@@ -109,7 +111,12 @@ fun RootNavigation(apiClient: ApiClient) {
                 )
                 HouseholdEditScreen(viewModel = vm, isNew = false, onBack = { nav.popBackStack() })
             }
-            composable(Routes.BUDGET) { PlaceholderScreen("Budget") }
+            composable(Routes.BUDGET) {
+                val vm: BudgetViewModel = viewModel(factory = factory(apiClient) {
+                    BudgetViewModel(apiClient)
+                })
+                BudgetScreen(viewModel = vm)
+            }
             composable(Routes.TODO) { PlaceholderScreen("Att-göra") }
         }
     }
