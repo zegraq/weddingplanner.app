@@ -1,5 +1,8 @@
 package app.weddingplanner.api
 
+import app.weddingplanner.domain.BudgetCategory
+import app.weddingplanner.domain.BudgetItem
+import app.weddingplanner.domain.BudgetView
 import app.weddingplanner.domain.Clock
 import app.weddingplanner.domain.Guest
 import app.weddingplanner.domain.GuestInput
@@ -18,16 +21,17 @@ class MockApiClient(
 
     private val mutex = Mutex()
     private val households = mutableListOf<Household>()
+    private val categories = mutableListOf<BudgetCategory>()
+    private var totalBudget: Long? = null
+    private var wedding: Wedding = Wedding(date = "2027-06-05", venue = null, totalBudget = null)
     private var idCounter = 0L
 
     init {
         seed()
+        seedBudget()
     }
 
-    override suspend fun getWedding(): Wedding = Wedding(
-        date = "2027-06-05",
-        venue = null,
-    )
+    override suspend fun getWedding(): Wedding = mutex.withLock { wedding }
 
     override suspend fun listHouseholds(): Result<List<Household>> = runCatching {
         mutex.withLock { households.toList() }
@@ -132,6 +136,157 @@ class MockApiClient(
         }
     }
 
+    override suspend fun getBudget(): Result<BudgetView> = runCatching {
+        mutex.withLock { snapshotBudget() }
+    }
+
+    override suspend fun setTotalBudget(amount: Long?): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            require(amount == null || amount >= 0) { "Totalbudget kan inte vara negativ" }
+            totalBudget = amount
+            wedding = wedding.copy(totalBudget = amount)
+            snapshotBudget()
+        }
+    }
+
+    override suspend fun createCategory(
+        name: String,
+        budgetedAmount: Long,
+        notes: String?,
+    ): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            require(name.isNotBlank()) { "Kategorinamn krävs" }
+            require(budgetedAmount >= 0) { "Budgetbelopp kan inte vara negativt" }
+            categories += BudgetCategory(
+                id = nextId("c"),
+                name = name.trim(),
+                budgetedAmount = budgetedAmount,
+                notes = notes?.trim()?.ifBlank { null },
+                items = emptyList(),
+            )
+            snapshotBudget()
+        }
+    }
+
+    override suspend fun updateCategory(
+        id: String,
+        name: String,
+        budgetedAmount: Long,
+        notes: String?,
+    ): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            require(name.isNotBlank()) { "Kategorinamn krävs" }
+            require(budgetedAmount >= 0) { "Budgetbelopp kan inte vara negativt" }
+            val index = categories.indexOfFirst { it.id == id }
+            require(index >= 0) { "Kategori $id finns inte" }
+            categories[index] = categories[index].copy(
+                name = name.trim(),
+                budgetedAmount = budgetedAmount,
+                notes = notes?.trim()?.ifBlank { null },
+            )
+            snapshotBudget()
+        }
+    }
+
+    override suspend fun deleteCategory(id: String): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            val removed = categories.removeAll { it.id == id }
+            require(removed) { "Kategori $id finns inte" }
+            snapshotBudget()
+        }
+    }
+
+    override suspend fun addItem(
+        categoryId: String,
+        description: String,
+        notes: String?,
+    ): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            require(description.isNotBlank()) { "Beskrivning krävs" }
+            val index = categories.indexOfFirst { it.id == categoryId }
+            require(index >= 0) { "Kategori $categoryId finns inte" }
+            val item = BudgetItem(
+                id = nextId("bi"),
+                categoryId = categoryId,
+                description = description.trim(),
+                actualAmount = null,
+                paidAt = null,
+                notes = notes?.trim()?.ifBlank { null },
+            )
+            categories[index] = categories[index].copy(items = categories[index].items + item)
+            snapshotBudget()
+        }
+    }
+
+    override suspend fun updateItem(
+        itemId: String,
+        description: String,
+        notes: String?,
+    ): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            require(description.isNotBlank()) { "Beskrivning krävs" }
+            mutateItem(itemId) { existing ->
+                existing.copy(
+                    description = description.trim(),
+                    notes = notes?.trim()?.ifBlank { null },
+                )
+            }
+            snapshotBudget()
+        }
+    }
+
+    override suspend fun markItemPaid(
+        itemId: String,
+        amount: Long,
+        paidAt: String,
+    ): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            require(amount >= 0) { "Belopp kan inte vara negativt" }
+            require(paidAt.isNotBlank()) { "Betaldatum krävs" }
+            mutateItem(itemId) { it.copy(actualAmount = amount, paidAt = paidAt.trim()) }
+            snapshotBudget()
+        }
+    }
+
+    override suspend fun markItemUnpaid(itemId: String): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            mutateItem(itemId) { it.copy(actualAmount = null, paidAt = null) }
+            snapshotBudget()
+        }
+    }
+
+    override suspend fun deleteItem(itemId: String): Result<BudgetView> = runCatching {
+        mutex.withLock {
+            var removed = false
+            categories.forEachIndexed { index, category ->
+                if (category.items.any { it.id == itemId }) {
+                    categories[index] = category.copy(items = category.items.filterNot { it.id == itemId })
+                    removed = true
+                }
+            }
+            require(removed) { "Post $itemId finns inte" }
+            snapshotBudget()
+        }
+    }
+
+    private fun mutateItem(itemId: String, transform: (BudgetItem) -> BudgetItem) {
+        categories.forEachIndexed { index, category ->
+            val itemIndex = category.items.indexOfFirst { it.id == itemId }
+            if (itemIndex >= 0) {
+                val newItems = category.items.toMutableList()
+                newItems[itemIndex] = transform(newItems[itemIndex])
+                categories[index] = category.copy(items = newItems)
+                return
+            }
+        }
+        error("Post $itemId finns inte")
+    }
+
+    private fun snapshotBudget(): BudgetView = BudgetView(
+        totalCap = totalBudget,
+        categories = categories.toList(),
+    )
+
     private fun nextId(prefix: String): String {
         idCounter += 1
         return "$prefix-${idCounter.toString(16).padStart(4, '0')}"
@@ -180,6 +335,55 @@ class MockApiClient(
             rsvpRespondedAt = null,
             notes = "Jobbar med Sara på Tetra",
             members = ericssonMembers,
+        )
+    }
+
+    private fun seedBudget() {
+        totalBudget = 350_000L
+        wedding = wedding.copy(totalBudget = 350_000L)
+
+        val matId = nextId("c")
+        categories += BudgetCategory(
+            id = matId,
+            name = "Mat",
+            budgetedAmount = 80_000L,
+            notes = null,
+            items = listOf(
+                BudgetItem(
+                    id = nextId("bi"),
+                    categoryId = matId,
+                    description = "Catering — Sara & Sons",
+                    actualAmount = 62_500L,
+                    paidAt = "2027-01-15",
+                    notes = "50 % betalt i förskott",
+                ),
+                BudgetItem(
+                    id = nextId("bi"),
+                    categoryId = matId,
+                    description = "Bröllopstårta",
+                    actualAmount = null,
+                    paidAt = null,
+                    notes = null,
+                ),
+            ),
+        )
+
+        val lokalId = nextId("c")
+        categories += BudgetCategory(
+            id = lokalId,
+            name = "Lokal",
+            budgetedAmount = 90_000L,
+            notes = "Inkluderar dukar, stolar och städ",
+            items = listOf(
+                BudgetItem(
+                    id = nextId("bi"),
+                    categoryId = lokalId,
+                    description = "Hyra herrgård",
+                    actualAmount = null,
+                    paidAt = null,
+                    notes = "Slutbetalning på bröllopsdagen",
+                ),
+            ),
         )
     }
 }

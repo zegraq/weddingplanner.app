@@ -10,6 +10,9 @@ Singleton i praktiken. En instans per drift.
 - `date` — bröllopsdatum, fast 2027-06-05 tills annat sägs
 - `rsvp_deadline` — global deadline. Gästspecifika undantag finns inte
 - `venue` — fritext, kan vara tomt initialt
+- `total_budget` — totalbudget-tak i SEK (heltal hela kronor), null
+  tills satt. Får överskridas av summan av kategoribudgets — vi
+  varnar bara, vi blockerar inte
 - `notes` — fritext
 
 ## Household
@@ -67,16 +70,35 @@ Att lägga till medlemmar är möjligt både via OSA-formuläret (publik
 sida) och via appen (administratörsvy). Båda vägarna går mot samma
 endpoint i backend.
 
-## BudgetItem
+## BudgetCategory
+
+Den planerande nivån. Vi sätter en budget per kategori — "Mat: 50 000
+kr", "Lokal: 80 000 kr". Kategorier skapas vart efter behovet uppstår,
+inga fördefinierade.
 
 - `id`
-- `category` — fritext (`mat`, `lokal`, `kläder`, `musik`)
-- `description` — vad det är
-- `budgeted_amount` — i SEK, heltal (öre om vi behöver, men
-  utgångspunkt är hela kronor)
-- `actual_amount` — null tills något betalats
-- `paid_at` — datum, null om inte betalat
+- `name` — fritext (`Mat`, `Lokal`, `Kläder`)
+- `budgeted_amount` — planerat belopp i SEK (heltal hela kronor)
 - `notes` — fritext
+
+## BudgetItem
+
+Enskilda utgifter inom en kategori. Inget planerat belopp på posten —
+gruppen äger planeringen. Posten skapas typiskt när vi bokar något
+("Catering Sara & Sons"), och får sitt faktiska belopp först när
+fakturan kommer.
+
+- `id`
+- `category_id`
+- `description` — vad det är
+- `actual_amount` — faktiskt belopp i SEK (heltal). Null tills posten
+  är betald
+- `paid_at` — datum, null tills posten är betald
+- `notes` — fritext
+
+En post räknas som "betald" när både `actual_amount` och `paid_at`
+har värden. Att markera betald sker via en snabbdialog i appen som
+sätter båda samtidigt.
 
 Ingen multi-currency, ingen växelkurs.
 
