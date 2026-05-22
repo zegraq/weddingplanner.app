@@ -16,7 +16,9 @@
 
 ### Versioner
 
-- JDK 21 (LTS)
+- JDK 17 (LTS) — vald eftersom utvecklingsmaskinen redan har den
+  installerad. Java 17 är fullt KMP-kompatibel. Uppgradering till
+  21 är trivial när det blir aktuellt
 - Kotlin senaste stable
 - Gradle senaste stable
 - minSdk 26 (Android 8.0)
