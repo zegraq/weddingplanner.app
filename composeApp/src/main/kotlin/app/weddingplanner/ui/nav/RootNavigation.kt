@@ -5,12 +5,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -37,8 +40,11 @@ import app.weddingplanner.ui.guests.HouseholdDetailScreen
 import app.weddingplanner.ui.guests.HouseholdDetailViewModel
 import app.weddingplanner.ui.guests.HouseholdEditScreen
 import app.weddingplanner.ui.guests.HouseholdEditViewModel
+import app.weddingplanner.ui.home.HomeScreen
+import app.weddingplanner.ui.home.HomeViewModel
 
 private object Routes {
+    const val HOME = "home"
     const val GUESTS = "guests"
     const val GUEST_NEW = "guests/new"
     const val GUEST_DETAIL = "guests/{id}"
@@ -53,6 +59,7 @@ private object Routes {
 private data class TopTab(val route: String, val label: String, val icon: ImageVector)
 
 private val tabs = listOf(
+    TopTab(Routes.HOME, "Hem", Icons.Default.Home),
     TopTab(Routes.GUESTS, "Gäster", Icons.Default.People),
     TopTab(Routes.BUDGET, "Budget", Icons.Default.Savings),
     TopTab(Routes.TODO, "Att-göra", Icons.Default.CheckBox),
@@ -62,13 +69,20 @@ private val tabs = listOf(
 fun RootNavigation(apiClient: ApiClient) {
     val nav = rememberNavController()
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = { BottomBar(nav) },
     ) { padding ->
         NavHost(
             navController = nav,
-            startDestination = Routes.GUESTS,
+            startDestination = Routes.HOME,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
+            composable(Routes.HOME) {
+                val vm: HomeViewModel = viewModel(factory = factory(apiClient) {
+                    HomeViewModel(apiClient)
+                })
+                HomeScreen(viewModel = vm)
+            }
             composable(Routes.GUESTS) {
                 val vm: GuestListViewModel = viewModel(factory = factory(apiClient) {
                     GuestListViewModel(apiClient)
@@ -126,7 +140,10 @@ fun RootNavigation(apiClient: ApiClient) {
 private fun BottomBar(nav: NavHostController) {
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination
-    NavigationBar {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+    ) {
         tabs.forEach { tab ->
             val selected = current?.hierarchy?.any { it.route == tab.route } == true
             NavigationBarItem(
@@ -140,6 +157,13 @@ private fun BottomBar(nav: NavHostController) {
                 },
                 icon = { Icon(tab.icon, contentDescription = tab.label) },
                 label = { Text(tab.label) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
             )
         }
     }

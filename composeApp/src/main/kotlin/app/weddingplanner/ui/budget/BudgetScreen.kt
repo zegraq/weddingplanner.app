@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
@@ -28,12 +30,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.weddingplanner.domain.BudgetCategory
@@ -67,9 +73,24 @@ private sealed interface DialogState {
 fun BudgetScreen(viewModel: BudgetViewModel) {
     val state by viewModel.uiState.collectAsState()
     var dialog by remember { mutableStateOf<DialogState?>(null) }
+    var searchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Budget") }) },
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {},
+                actions = {
+                    TopAction(Icons.Default.Search, "Sök") { searchActive = !searchActive }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+                ),
+            )
+        },
         floatingActionButton = {
             if (state.view != null) {
                 ExtendedFloatingActionButton(
@@ -88,6 +109,9 @@ fun BudgetScreen(viewModel: BudgetViewModel) {
                 state.view != null -> BudgetContent(
                     view = state.view!!,
                     errorMessage = state.errorMessage,
+                    searchActive = searchActive,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
                     onEditTotal = { dialog = DialogState.EditTotal },
                     onAddCategory = { dialog = DialogState.NewCategory },
                     onEditCategory = { dialog = DialogState.EditCategory(it) },
@@ -155,6 +179,9 @@ fun BudgetScreen(viewModel: BudgetViewModel) {
 private fun BudgetContent(
     view: BudgetView,
     errorMessage: String?,
+    searchActive: Boolean,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onEditTotal: () -> Unit,
     onAddCategory: () -> Unit,
     onEditCategory: (BudgetCategory) -> Unit,
@@ -163,12 +190,22 @@ private fun BudgetContent(
     onPayItem: (BudgetItem) -> Unit,
     onUnpayItem: (String) -> Unit,
 ) {
+    val categories = view.categories.filterBySearch(searchQuery)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 104.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { TotalHeaderCard(view, onEditTotal) }
+        if (searchActive) {
+            item {
+                SearchField(
+                    query = searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                    placeholder = "Sök kategori, post eller anteckning",
+                )
+            }
+        }
         if (errorMessage != null) {
             item {
                 Text(
@@ -178,10 +215,10 @@ private fun BudgetContent(
                 )
             }
         }
-        if (view.categories.isEmpty()) {
+        if (categories.isEmpty()) {
             item { EmptyState(onAddCategory) }
         } else {
-            items(view.categories, key = { it.id }) { category ->
+            items(categories, key = { it.id }) { category ->
                 CategoryCard(
                     category = category,
                     onEditCategory = { onEditCategory(category) },
@@ -199,21 +236,25 @@ private fun BudgetContent(
 private fun TotalHeaderCard(view: BudgetView, onEditTotal: () -> Unit) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onEditTotal),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Totalbudget", style = MaterialTheme.typography.titleSmall)
+        Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("BUDGET", style = MaterialTheme.typography.labelLarge)
             Text(
                 formatSek(view.totalCap),
                 style = MaterialTheme.typography.headlineSmall,
-                color = if (view.isOverCap) OverCapColor else MaterialTheme.colorScheme.onSurface,
+                color = if (view.isOverCap) OverCapColor else MaterialTheme.colorScheme.onPrimaryContainer,
             )
             HorizontalDivider()
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Planerat (kategorier)", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Planerat (kategorier)", color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f))
                 Text(formatSek(view.plannedTotal))
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Hittills betalt", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Hittills betalt", color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f))
                 Text(formatSek(view.paidTotal))
             }
             if (view.totalCap != null) {
@@ -221,11 +262,11 @@ private fun TotalHeaderCard(view: BudgetView, onEditTotal: () -> Unit) {
                     val remaining = view.unallocated ?: 0L
                     Text(
                         if (remaining >= 0) "Kvar att fördela" else "Över taket",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                     )
                     Text(
                         formatSek(remaining),
-                        color = if (remaining < 0) OverCapColor else MaterialTheme.colorScheme.onSurface,
+                        color = if (remaining < 0) OverCapColor else MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }
@@ -245,10 +286,12 @@ private fun CategoryCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onEditCategory),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -296,6 +339,34 @@ private fun CategoryCard(
             }
         }
     }
+}
+
+@Composable
+private fun TopAction(icon: ImageVector, description: String, onClick: () -> Unit) {
+    androidx.compose.material3.Surface(
+        modifier = Modifier.padding(end = 8.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+    ) {
+        IconButton(onClick = onClick) {
+            Icon(icon, contentDescription = description, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    placeholder: String,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text(placeholder) },
+    )
 }
 
 @Composable
@@ -372,5 +443,24 @@ private fun EmptyState(onAddCategory: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         OutlinedButton(onClick = onAddCategory) { Text("Lägg till första kategorin") }
+    }
+}
+
+private fun List<BudgetCategory>.filterBySearch(query: String): List<BudgetCategory> {
+    val normalized = query.trim().lowercase()
+    if (normalized.isBlank()) return this
+    return mapNotNull { category ->
+        val categoryMatches = category.name.contains(normalized, ignoreCase = true) ||
+            category.notes.orEmpty().contains(normalized, ignoreCase = true)
+        val matchingItems = category.items.filter { item ->
+            item.description.contains(normalized, ignoreCase = true) ||
+                item.notes.orEmpty().contains(normalized, ignoreCase = true) ||
+                item.paidAt.orEmpty().contains(normalized, ignoreCase = true)
+        }
+        when {
+            categoryMatches -> category
+            matchingItems.isNotEmpty() -> category.copy(items = matchingItems)
+            else -> null
+        }
     }
 }

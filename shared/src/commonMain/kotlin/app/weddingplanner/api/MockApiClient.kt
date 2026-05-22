@@ -307,7 +307,7 @@ class MockApiClient(
         val anderssonMembers = listOf(
             Guest(nextId("g"), anderssonId, "Maria Andersson", true, RsvpStatus.Attending, null, null),
             Guest(nextId("g"), anderssonId, "Lars Andersson", false, RsvpStatus.Attending, "Glutenfri", null),
-            Guest(nextId("g"), anderssonId, "Elin Andersson", false, RsvpStatus.Pending, null, "8 år"),
+            Guest(nextId("g"), anderssonId, "Elin Andersson", false, RsvpStatus.Declined, null, "8 år"),
         )
         households += Household(
             id = anderssonId,

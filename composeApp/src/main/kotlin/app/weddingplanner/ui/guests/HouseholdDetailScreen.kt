@@ -35,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -67,9 +68,16 @@ fun HouseholdDetailScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text(state.household?.displayName ?: "Hushåll") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Tillbaka")
@@ -260,7 +268,7 @@ private fun NotesCard(notes: String) {
 }
 
 private fun RsvpStatus.swedishLabel(): String = when (this) {
-    RsvpStatus.Pending -> "Väntar svar"
+    RsvpStatus.Pending -> "Ej valt"
     RsvpStatus.Attending -> "Kommer"
     RsvpStatus.Declined -> "Kommer inte"
 }
