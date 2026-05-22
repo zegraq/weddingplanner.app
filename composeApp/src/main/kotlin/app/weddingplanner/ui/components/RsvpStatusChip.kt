@@ -19,7 +19,7 @@ private val DeclinedColor = Color(0xFFC62828)
 private val PendingColor = Color(0xFF757575)
 
 fun RsvpStatus.label(): String = when (this) {
-    RsvpStatus.Pending -> "Väntar"
+    RsvpStatus.Pending -> "Ej valt"
     RsvpStatus.Attending -> "Kommer"
     RsvpStatus.Declined -> "Kommer inte"
 }
