@@ -10,6 +10,8 @@ import app.weddingplanner.domain.Household
 import app.weddingplanner.domain.HouseholdInput
 import app.weddingplanner.domain.RsvpStatus
 import app.weddingplanner.domain.RsvpToken
+import app.weddingplanner.domain.ShoppingItem
+import app.weddingplanner.domain.ShoppingItemInput
 import app.weddingplanner.domain.TodoAssignee
 import app.weddingplanner.domain.TodoInput
 import app.weddingplanner.domain.TodoItem
@@ -27,6 +29,7 @@ class MockApiClient(
     private val households = mutableListOf<Household>()
     private val categories = mutableListOf<BudgetCategory>()
     private val todos = mutableListOf<TodoItem>()
+    private val shopping = mutableListOf<ShoppingItem>()
     private var totalBudget: Long? = null
     private var wedding: Wedding = Wedding(date = "2027-06-05", venue = null, totalBudget = null)
     private var idCounter = 0L
@@ -35,6 +38,7 @@ class MockApiClient(
         seed()
         seedBudget()
         seedTodos()
+        seedShopping()
     }
 
     override suspend fun getWedding(): Wedding = mutex.withLock { wedding }
@@ -337,6 +341,75 @@ class MockApiClient(
         }
     }
 
+    override suspend fun listShopping(): Result<List<ShoppingItem>> = runCatching {
+        mutex.withLock { shopping.toList() }
+    }
+
+    override suspend fun createShopping(input: ShoppingItemInput): Result<ShoppingItem> = runCatching {
+        mutex.withLock {
+            validateShoppingInput(input)
+            val item = ShoppingItem(
+                id = nextId("sh"),
+                name = input.name.trim(),
+                quantity = input.quantity,
+                store = input.store?.trim()?.ifBlank { null },
+                notes = input.notes?.trim()?.ifBlank { null },
+                boughtAt = null,
+                createdAt = clock.nowIso(),
+            )
+            shopping += item
+            item
+        }
+    }
+
+    override suspend fun updateShopping(
+        id: String,
+        input: ShoppingItemInput,
+    ): Result<ShoppingItem> = runCatching {
+        mutex.withLock {
+            validateShoppingInput(input)
+            val index = shopping.indexOfFirst { it.id == id }
+            require(index >= 0) { "Inköpspost $id finns inte" }
+            val updated = shopping[index].copy(
+                name = input.name.trim(),
+                quantity = input.quantity,
+                store = input.store?.trim()?.ifBlank { null },
+                notes = input.notes?.trim()?.ifBlank { null },
+            )
+            shopping[index] = updated
+            updated
+        }
+    }
+
+    override suspend fun setShoppingBought(
+        id: String,
+        boughtAt: String?,
+    ): Result<ShoppingItem> = runCatching {
+        mutex.withLock {
+            val date = boughtAt?.trim()?.ifBlank { null }
+            if (date != null) {
+                require(DATE_REGEX.matches(date)) { "Datum ska vara yyyy-MM-dd" }
+            }
+            val index = shopping.indexOfFirst { it.id == id }
+            require(index >= 0) { "Inköpspost $id finns inte" }
+            val updated = shopping[index].copy(boughtAt = date)
+            shopping[index] = updated
+            updated
+        }
+    }
+
+    override suspend fun deleteShopping(id: String): Result<Unit> = runCatching {
+        mutex.withLock {
+            val removed = shopping.removeAll { it.id == id }
+            require(removed) { "Inköpspost $id finns inte" }
+        }
+    }
+
+    private fun validateShoppingInput(input: ShoppingItemInput) {
+        require(input.name.isNotBlank()) { "Namn krävs" }
+        require(input.quantity >= 1) { "Antal måste vara minst 1" }
+    }
+
     private fun mutateItem(itemId: String, transform: (BudgetItem) -> BudgetItem) {
         categories.forEachIndexed { index, category ->
             val itemIndex = category.items.indexOfFirst { it.id == itemId }
@@ -404,6 +477,28 @@ class MockApiClient(
             notes = "Jobbar med Sara på Tetra",
             members = ericssonMembers,
         )
+    }
+
+    private fun seedShopping() {
+        val now = clock.nowIso()
+        fun item(name: String, qty: Int, store: String?, notes: String?, bought: String? = null) =
+            ShoppingItem(
+                id = nextId("sh"),
+                name = name,
+                quantity = qty,
+                store = store,
+                notes = notes,
+                boughtAt = bought,
+                createdAt = now,
+            )
+        shopping += item("Servetter (linne)", 100, "IKEA", "Linnefärg, matchar bordsdukar")
+        shopping += item("Bordskort", 80, "Panduro", null)
+        shopping += item("Namnskyltar", 80, "Panduro", "Handskrivna av Sara")
+        shopping += item("Ringkudde", 1, "Etsy", null)
+        shopping += item("Värmeljus", 200, "IKEA", null)
+        shopping += item("Konfetti (biologisk)", 1, "Bröllopsbutiken.se", null, bought = "2026-04-10")
+        shopping += item("Brudens skor", 1, null, "Provas hos Sara hemma", bought = "2026-03-20")
+        shopping += item("Tackkort med kuvert", 100, "Panduro", "Skrivs efter bröllopet")
     }
 
     private fun seedTodos() {

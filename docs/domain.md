@@ -120,6 +120,24 @@ Ingen multi-currency, ingen växelkurs.
 Inga subtasks, ingen prioritet, inga taggar. Om vi behöver det får vi
 lägga till det när vi behöver det.
 
+## ShoppingItem
+
+Småinköp inför bröllopet — dekor, ljus, servetter, namnskyltar,
+ringkudde och annat som behövs i fysisk form men inte hör hemma i
+budget-posterna (där sitter de stora bokningarna).
+
+- `id`
+- `name`
+- `quantity` — heltal, default 1
+- `store` — fritext, valfri butik/källa (`IKEA`, `Panduro`,
+  `Etsy`). Visas som subtext, ingen gruppering i v1
+- `notes` — fritext
+- `bought_at` — datum (yyyy-MM-dd), null tills posten är köpt. En
+  post räknas som "köpt" när det här fältet har ett värde
+
+Inga belopp, ingen budgetkoppling. Om en post är dyr nog att vilja
+spåra i budgeten — lägg in den som en `BudgetItem` istället.
+
 ## Det vi medvetet skippar i v1
 
 - **Audit-logg.** `created_at` / `updated_at` på rader räcker.
