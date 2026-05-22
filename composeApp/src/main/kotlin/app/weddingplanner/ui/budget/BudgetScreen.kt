@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -42,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.weddingplanner.domain.BudgetCategory
 import app.weddingplanner.domain.BudgetItem
@@ -308,8 +310,13 @@ private fun ItemRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.padding(end = 8.dp)) {
-            Text(item.description, style = MaterialTheme.typography.bodyMedium)
+        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(
+                item.description,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             val sub = buildList {
                 if (item.isPaid) {
                     add(formatSek(item.actualAmount))
@@ -323,19 +330,25 @@ private fun ItemRow(
                 sub,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         if (item.isPaid) {
             AssistChip(
+                modifier = Modifier.widthIn(min = 112.dp),
                 onClick = onUnpay,
-                label = { Text("Betald") },
+                label = { Text("Betald", maxLines = 1) },
                 leadingIcon = { Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(16.dp)) },
                 colors = AssistChipDefaults.assistChipColors(labelColor = PaidColor, leadingIconContentColor = PaidColor),
             )
         } else {
-            TextButton(onClick = onPay) {
+            TextButton(
+                modifier = Modifier.widthIn(min = 112.dp),
+                onClick = onPay,
+            ) {
                 Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
-                Text(" Betald?", color = PendingColor)
+                Text(" Betald?", color = PendingColor, maxLines = 1)
             }
         }
     }
